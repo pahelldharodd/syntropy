@@ -1,6 +1,16 @@
 'use client'
 
-import { MAIN_SLOTS, type MainSlot, type Meal, mealTotals, SLOT_LABEL } from '@syntropy/nutrition'
+import {
+  dayGroups,
+  dayMicros,
+  forecastToday,
+  MAIN_SLOTS,
+  type MainSlot,
+  type Meal,
+  mealTotals,
+  microTargets,
+  SLOT_LABEL,
+} from '@syntropy/nutrition'
 import {
   fitDotPx,
   GlassCard,
@@ -17,11 +27,14 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Fragment, useMemo } from 'react'
 import { Header } from '@/components/BottomBar'
 import { addDays, fmt, kickerDate, today } from '@/lib/dates'
+import { suggestContext } from '@/lib/dietPatterns'
 import { dayColor, useDayStats } from '@/lib/foodHistory'
-import { useToday } from '@/lib/summary'
+import { type DayTargets, useToday } from '@/lib/summary'
 import { mondayOf } from '@/lib/training'
+import { useNow } from '@/lib/useNow'
 import { tap } from '@/platform/haptics'
-import { useWater } from '@/stores'
+import { useNutrition, useProfile, useWater } from '@/stores'
+import { GroupChips, MicroBar } from './Nutrients'
 
 function laterTag(m: Meal): string | null {
   const later = m.items
@@ -200,6 +213,10 @@ export function FoodLogScreen() {
           ))}
         </div>
       </GlassCard>
+
+      {date === today() ? <HeadsUpCard dt={t.dt} /> : null}
+
+      <BeyondCard date={date} meals={t.meals} kcalTarget={t.dt.kcal} />
 
       <GlassCard
         as="section"
@@ -393,7 +410,7 @@ export function FoodLogScreen() {
                       className="sy-mono"
                       style={{ fontSize: 9.5, color: 'rgba(243,241,236,0.5)' }}
                     >
-                      P {Math.round(tot.protein)} · C {Math.round(tot.carbs)} · F{' '}
+                      P {Math.round(tot.protein)} · C {Math.round(tot.carbs)} · Fat{' '}
                       {Math.round(tot.fat)}
                     </span>
                   </span>
@@ -470,6 +487,98 @@ export function FoodLogScreen() {
         </p>
       ) : null}
     </Screen>
+  )
+}
+
+/** Food groups plus the three most-asked-about micronutrients; opens the Nutrients page. */
+/** Preemptive: what today's usual remaining meals will leave short, while there is time to act. */
+function HeadsUpCard({ dt }: { dt: DayTargets }) {
+  const now = new Date(useNow(60_000))
+  const nowMin = now.getHours() * 60 + now.getMinutes()
+  const sex = useProfile((s) => s.sex)
+  const diet = useProfile((s) => s.diet)
+  const meals = useNutrition((s) => s.meals)
+  const heads = useMemo(
+    () => forecastToday(meals, today(), nowMin, suggestContext(sex, diet, dt.kcal, dt.protein)),
+    [meals, nowMin, sex, diet, dt.kcal, dt.protein],
+  )
+  if (!heads.length) return null
+  return (
+    <GlassCard
+      href="/food/patterns/"
+      aria-label="Before today ends"
+      radius={24}
+      padding="14px 16px"
+      style={{ display: 'flex', flexDirection: 'column', gap: 10 }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 15 }}>
+          <Icon name="sparkle" size={14} style={{ color: '#A9C3A0' }} />
+          Before today ends
+        </span>
+        <span className="sy-mono" style={{ fontSize: 10.5, color: 'rgba(243,241,236,0.55)' }}>
+          PATTERNS ›
+        </span>
+      </div>
+      {heads.map((h) => (
+        <div
+          key={h.id}
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 3,
+            padding: '9px 12px',
+            borderRadius: 14,
+            background: 'rgba(169,195,160,0.08)',
+            borderLeft: '2px solid #A9C3A0',
+          }}
+        >
+          <span style={{ fontSize: 13, lineHeight: 1.4, color: 'rgba(243,241,236,0.9)' }}>
+            {h.text}
+          </span>
+          <span style={{ fontSize: 12.5, lineHeight: 1.45, color: 'rgba(243,241,236,0.62)' }}>
+            {h.fix}
+          </span>
+        </div>
+      ))}
+    </GlassCard>
+  )
+}
+
+function BeyondCard({
+  date,
+  meals,
+  kcalTarget,
+}: {
+  date: string
+  meals: Meal[]
+  kcalTarget: number
+}) {
+  const sex = useProfile((s) => s.sex)
+  const micros = useMemo(() => dayMicros(meals), [meals])
+  const groups = useMemo(() => dayGroups(meals), [meals])
+  const target = microTargets(sex, kcalTarget)
+  return (
+    <GlassCard
+      href={date === today() ? '/food/nutrients/' : `/food/nutrients/?d=${date}`}
+      aria-label="Nutrients beyond calories"
+      radius={24}
+      padding="14px 16px"
+      style={{ display: 'flex', flexDirection: 'column', gap: 12 }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+        <span style={{ fontSize: 15 }}>Beyond calories</span>
+        <span className="sy-mono" style={{ fontSize: 10.5, color: 'rgba(243,241,236,0.55)' }}>
+          NUTRIENTS ›
+        </span>
+      </div>
+      <GroupChips eaten={groups} />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0,1fr))', gap: 12 }}>
+        {(['fibre', 'iron', 'calcium'] as const).map((k) => (
+          <MicroBar key={k} k={k} value={micros.total[k]} target={target[k]} stacked />
+        ))}
+      </div>
+    </GlassCard>
   )
 }
 

@@ -332,7 +332,7 @@ export function FoodHistoryScreen() {
             <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               <span style={{ fontSize: 14.5 }}>{d.date === t ? 'Today' : shortDate(d.date)}</span>
               <span className="sy-mono" style={{ fontSize: 10.5, color: 'rgba(243,241,236,0.5)' }}>
-                P {Math.round(d.protein)} · C {Math.round(d.carbs)} · F {Math.round(d.fat)} ·{' '}
+                P {Math.round(d.protein)} · C {Math.round(d.carbs)} · Fat {Math.round(d.fat)} ·{' '}
                 {d.meals} meals
               </span>
             </span>

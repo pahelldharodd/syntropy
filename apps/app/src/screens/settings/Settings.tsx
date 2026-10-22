@@ -16,13 +16,20 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { Avatar, squareImage } from '@/components/Avatar'
 import { ModalHeader } from '@/components/BottomBar'
+import { currentReminderCopy } from '@/lib/dietPatterns'
 import { GYM_PRESETS } from '@/lib/plan'
 import { loadSeed } from '@/lib/seed'
 import { fmtHeight } from '@/lib/units'
 import { biometryAvailable, unlock } from '@/platform/biometric'
 import { pickPhoto, takePhotoNative } from '@/platform/camera'
 import { exportJson, pickJsonFile } from '@/platform/files'
-import { ensureNotifyPermission, scheduleWaterReminders } from '@/platform/notifications'
+import {
+  ensureNotifyPermission,
+  type MealTimes,
+  scheduleMealReminders,
+  scheduleWaterReminders,
+  sendTestReminder,
+} from '@/platform/notifications'
 import { deletePhoto, savePhoto } from '@/platform/storage'
 import {
   toast,
@@ -140,6 +147,29 @@ export function SettingsScreen() {
     }
     water.setReminders(on)
     await scheduleWaterReminders(on)
+  }
+
+  const toggleMealReminders = async (on: boolean) => {
+    settings.set({ mealReminders: on })
+    if (on && !(await ensureNotifyPermission())) return toast('Reminders work in the Android app')
+    await scheduleMealReminders(on, settings.mealTimes, currentReminderCopy())
+  }
+
+  const setMealTime = async (slot: keyof MealTimes, time: string) => {
+    const mealTimes = { ...settings.mealTimes, [slot]: time }
+    settings.set({ mealTimes })
+    await scheduleMealReminders(settings.mealReminders, mealTimes, currentReminderCopy())
+  }
+
+  const testReminder = async () => {
+    const r = await sendTestReminder(currentReminderCopy().lunch)
+    toast(
+      r === 'native'
+        ? 'A sample reminder arrives in 5 seconds'
+        : r === 'web'
+          ? 'Sample reminder sent'
+          : 'Allow notifications to see reminders',
+    )
   }
 
   return (
@@ -314,6 +344,71 @@ export function SettingsScreen() {
             <Switch label="Water reminders" checked={water.reminders} onChange={toggleReminders} />
           }
         />
+        <ListRow
+          icon="bell"
+          iconTone="sage"
+          title="Meal reminders"
+          subtitle={`${settings.mealTimes.breakfast}, ${settings.mealTimes.lunch}, ${settings.mealTimes.dinner}`}
+          trailing={
+            <Switch
+              label="Meal reminders"
+              checked={settings.mealReminders}
+              onChange={toggleMealReminders}
+            />
+          }
+        />
+        {settings.mealReminders ? (
+          <GlassCard
+            radius={22}
+            padding="12px 14px"
+            style={{ display: 'flex', flexDirection: 'column', gap: 10 }}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {(['breakfast', 'lunch', 'dinner'] as const).map((slot) => (
+                <label
+                  key={slot}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 12,
+                    fontSize: 14,
+                    color: 'rgba(243,241,236,0.8)',
+                    textTransform: 'capitalize',
+                  }}
+                >
+                  {slot}
+                  <input
+                    type="time"
+                    value={settings.mealTimes[slot]}
+                    onChange={(e) => e.target.value && setMealTime(slot, e.target.value)}
+                    style={{
+                      height: 44,
+                      width: 150,
+                      borderRadius: 14,
+                      border: '1px solid rgba(255,255,255,0.12)',
+                      background: 'rgba(255,255,255,0.05)',
+                      color: '#F3F1EC',
+                      font: 'inherit',
+                      fontSize: 14,
+                      padding: '0 8px',
+                      colorScheme: 'dark',
+                    }}
+                  />
+                </label>
+              ))}
+            </div>
+            <PillButton
+              variant="glass"
+              height={44}
+              fontSize={13.5}
+              icon="bell"
+              onClick={testReminder}
+            >
+              Send a test reminder
+            </PillButton>
+          </GlassCard>
+        ) : null}
         <GlassCard
           radius={22}
           padding="12px 14px"

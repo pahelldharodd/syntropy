@@ -20,8 +20,8 @@ nutrition with Gemini photo analysis, an AI chat coach, adaptive targets, and An
   app lock (enrol, unlock).
 - **AI = Gemini API free tier, called from the phone.** The user pastes their own key; it is
   stored in the Android Keystore via secure storage and never bundled, logged, exported or synced.
-  No on-device models. Model names are a setting (defaults: `gemini-3.8-flash` for vision and
-  coach, `gemini-3.5-flash-lite` for chat and text parsing).
+  No on-device models. Model names are a setting (defaults: `gemini-3.5-flash-lite` for photo scans, chat and text parsing;
+  `gemini-3.8-flash` was the photo default until it kept returning 503 "high demand" on the free tier).
 - **Next.js (static export) + Motion** for the UI, inside Capacitor 8.
 - **Missing pages are designed by Claude in the same design system**, shown to the owner as a
   390 x 844 screenshot for approval before real data is wired.

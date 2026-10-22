@@ -24,8 +24,10 @@ import { addDays, today } from './dates'
 
 /*
  * Sample data for the web demo, screenshots, and "Explore with sample data" on Welcome.
- * Mirrors the numbers on the design boards: Atul, 74.2 kg, cutting at a steady pace, a
- * thali for lunch with a second helping, 9 glasses of water.
+ * Mirrors the numbers on the design boards: Pahel, 74.2 kg, cutting at a steady pace, a
+ * thali for lunch with a second helping, 9 glasses of water. Past days skip breakfast now and
+ * then, drift in meal times and have a packaged snack on some evenings, so the Nutrients and
+ * Diet patterns pages have patterns to show.
  */
 
 function rng(seed: number) {
@@ -158,11 +160,26 @@ const MENUS: Record<MainSlot, [string, number][][]> = {
   ],
 }
 
+/** Evening packaged snacks on some days, for the processed-food measures. */
+const PACKAGED: [string, number][] = [
+  ['namkeen', 1],
+  ['maggi', 1],
+  ['cola', 1],
+  ['potato-chips', 1],
+]
+
 const TIMES: Record<MainSlot, string> = {
   breakfast: '08:40',
   lunch: '13:42',
   snack: '17:15',
   dinner: '20:30',
+}
+
+/** Moves an "HH:MM" time by up to ±80 minutes; r = 0.5 keeps it. */
+function drift(hhmm: string, r: number): string {
+  const [h, m] = hhmm.split(':').map(Number)
+  const t = h * 60 + m + Math.round((r - 0.5) * 160)
+  return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`
 }
 
 export function buildSeed() {
@@ -192,6 +209,7 @@ export function buildSeed() {
     const d = addDays(t, -i)
     for (const slot of ['breakfast', 'lunch', 'snack', 'dinner'] as MainSlot[]) {
       if (slot === 'snack' && rnd() < 0.15) continue
+      if (slot === 'breakfast' && rnd() < 0.3) continue
       const menu = MENUS[slot][Math.floor(rnd() * MENUS[slot].length)]
       const extra: [string, number][] =
         slot === 'breakfast' && rnd() < 0.6
@@ -203,8 +221,19 @@ export function buildSeed() {
         id: newId('meal'),
         date: d,
         slot,
-        time: TIMES[slot],
+        time: drift(TIMES[slot], slot === 'snack' ? 0.5 : rnd()),
         items: [...menu, ...extra].map(([id, q]) => it(id, q)),
+        createdAt: 0,
+      })
+    }
+    if (rnd() < 0.4) {
+      const [id, q] = PACKAGED[Math.floor(rnd() * PACKAGED.length)]
+      meals.push({
+        id: newId('meal'),
+        date: d,
+        slot: 'extra',
+        time: drift('21:00', rnd()),
+        items: [it(id, q)],
         createdAt: 0,
       })
     }
@@ -305,7 +334,7 @@ export function buildSeed() {
 
   return {
     profile: {
-      name: 'Atul Chahar',
+      name: 'Pahel',
       email: 'you@email.com',
       sex: 'male' as const,
       age: 27,

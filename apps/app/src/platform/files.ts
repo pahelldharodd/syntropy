@@ -5,8 +5,17 @@ import { Share } from '@capacitor/share'
 import { isNative } from './native'
 
 /** Share a JSON backup (Android share sheet) or download it (web). */
-export async function exportJson(filename: string, data: unknown): Promise<void> {
-  const text = JSON.stringify(data, null, 2)
+export function exportJson(filename: string, data: unknown): Promise<void> {
+  return exportText(filename, JSON.stringify(data, null, 2), 'application/json', 'Syntropy backup')
+}
+
+/** Share a text file (Android share sheet) or download it (web). */
+export async function exportText(
+  filename: string,
+  text: string,
+  mime: string,
+  title: string,
+): Promise<void> {
   if (isNative()) {
     const r = await Filesystem.writeFile({
       path: filename,
@@ -14,14 +23,10 @@ export async function exportJson(filename: string, data: unknown): Promise<void>
       directory: Directory.Cache,
       encoding: Encoding.UTF8,
     })
-    await Share.share({
-      title: 'Syntropy backup',
-      url: r.uri,
-      dialogTitle: 'Save your Syntropy backup',
-    })
+    await Share.share({ title, url: r.uri, dialogTitle: `Save your ${title}` })
     return
   }
-  const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }))
+  const url = URL.createObjectURL(new Blob([text], { type: mime }))
   const a = document.createElement('a')
   a.href = url
   a.download = filename

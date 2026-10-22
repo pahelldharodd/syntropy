@@ -5,6 +5,7 @@ import {
   formatQty,
   itemFromFood,
   itemMacros,
+  itemMicros,
   type Meal,
   type MealItem,
   type MealSlot,
@@ -76,6 +77,7 @@ export function MealReviewScreen() {
   }, [photoId])
 
   const tot = mealTotals({ items })
+  const fibre = items.reduce((a, i) => a + (itemMicros(i)?.fibre ?? 0), 0)
   const split = macroSplit(tot)
   const confs = items.map((i) => i.confidence).filter((c): c is number => c != null)
   const avg = confs.length
@@ -213,8 +215,13 @@ export function MealReviewScreen() {
             </span>
             <span style={{ fontSize: 14, color: 'rgba(243,241,236,0.62)' }}>kcal</span>
           </div>
-          <div className="sy-mono" style={{ fontSize: 11.5, color: 'rgba(243,241,236,0.72)' }}>
-            P {Math.round(tot.protein)} g · C {Math.round(tot.carbs)} g · F {Math.round(tot.fat)} g
+          <div
+            className="sy-mono"
+            style={{ fontSize: 11.5, lineHeight: 1.5, color: 'rgba(243,241,236,0.72)' }}
+          >
+            Protein {Math.round(tot.protein)} g · Carbs {Math.round(tot.carbs)} g
+            <br />
+            Fat {Math.round(tot.fat)} g · Fibre {Math.round(fibre)} g
           </div>
         </div>
       </div>

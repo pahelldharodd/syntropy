@@ -6,6 +6,7 @@ import { MotionConfig, motion } from 'motion/react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { type ReactNode, useEffect, useRef } from 'react'
+import { useSmartReminders } from '@/lib/dietPatterns'
 import { loadSeed } from '@/lib/seed'
 import { useWidgetSync } from '@/lib/widgetSync'
 import { isDemoBuild, isNative } from '@/platform/native'
@@ -90,6 +91,7 @@ export function Providers({ children }: { children: ReactNode }) {
   }, [router])
 
   useWidgetSync()
+  useSmartReminders()
 
   const tab = tabFor(path)
   return (
